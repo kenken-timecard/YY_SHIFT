@@ -1,13 +1,49 @@
-
 import streamlit as st
 from ortools.sat.python import cp_model
 import pandas as pd
 
-st.set_page_config(page_title="シフト作成", layout="wide")
-st.title("余市JR")
+# --- ページ設定（アイコンとタイトル） ---
+st.set_page_config(page_title="余市JRシフト", page_icon="🚃", layout="wide")
+
+# ==========================================
+# 🎨 デザイン（CSS）設定エリア
+# ==========================================
+# ここで色や文字の大きさを変えています
+st.markdown("""
+    <style>
+    /* 全体の背景色を薄い緑に */
+    .stApp {
+        background-color: #F1F8E9;
+    }
+    /* タイトルの色を濃い緑に */
+    h1 {
+        color: #2E7D32;
+        font-family: 'Helvetica', sans-serif;
+    }
+    /* サイドバーの背景を少し濃く */
+    [data-testid="stSidebar"] {
+        background-color: #DCEDC8;
+    }
+    /* ボタンの色をカスタマイズ */
+    div.stButton > button {
+        background-color: #2E7D32;
+        color: white;
+        border-radius: 10px;
+        font-weight: bold;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+# タイトル表示
+st.title("🚃 余市JR シフト作成システム")
+st.markdown("**左のメニューで条件を設定し、「作成開始」を押してください**")
+
+# ==========================================
+# 以下、ロジック（中身は同じです）
+# ==========================================
 
 # --- 設定 ---
-num_days = st.sidebar.number_input("作成日数", 28, 31, 31)
+num_days = st.sidebar.number_input("📅 作成する日数", 28, 31, 31)
 
 # メンバー定義
 default_mem = [
@@ -29,7 +65,7 @@ default_mem = [
 ]
 
 df = pd.DataFrame(default_mem)
-st.sidebar.markdown("### 1. メンバー設定")
+st.sidebar.markdown("### 1. 👥 メンバー設定")
 edited = st.sidebar.data_editor(
     df, 
     column_config={"act":"参加","name":"名前","sk":"Lv","ban":"1番NG","type":"タイプ"},
@@ -40,9 +76,9 @@ active = edited[edited['act']==True].to_dict('records')
 
 # --- 希望入力 ---
 st.sidebar.markdown("---")
-st.sidebar.markdown("### 2. 希望入力")
+st.sidebar.markdown("### 2. 🙋‍♂️ 希望入力")
 reqs = {}
-with st.sidebar.expander("ここをクリックして入力", expanded=True):
+with st.sidebar.expander("🔽 ここをクリックして入力", expanded=True):
     kind = st.radio("種類", ["🛌絶対休","🍵明or休","☀️日勤","💪泊まり"], horizontal=True)
     code = 0
     if "絶対" in kind: code=10
@@ -56,8 +92,8 @@ with st.sidebar.expander("ここをクリックして入力", expanded=True):
             for d in days: reqs[m['name']][d] = code
 
 # --- メイン処理 ---
-if st.button("🚀 作成開始", type="primary"):
-    with st.spinner("AIが計算中..."):
+if st.button("🚀 シフト作成開始"):
+    with st.spinner("AIが最適なシフトを計算中..."):
         model = cp_model.CpModel()
         nm = len(active)
         S = [0,1,2,3,4,5] # 0:休, 1-4:泊, 5:日
@@ -160,7 +196,7 @@ if st.button("🚀 作成開始", type="primary"):
         status = solver.Solve(model)
 
         if status in [cp_model.OPTIMAL, cp_model.FEASIBLE]:
-            st.success("作成完了！")
+            st.success("✅ シフト作成完了！")
             
             # --- 1. シフト表データ作成 ---
             matrix_data = []
@@ -179,14 +215,12 @@ if st.button("🚀 作成開始", type="primary"):
                     row_data[d+1] = val
                 matrix_data.append(row_data)
 
-            # DataFrame作成（名前をインデックスに）
             df_matrix = pd.DataFrame(matrix_data, index=[m['name'] for m in active])
             df_matrix.columns = [f"{c}日" for c in df_matrix.columns]
 
             st.markdown("### 📋 シフト表 (コピペ用)")
-            st.info("右上のコピーボタンを押して、スプレッドシートの「A列(名前列)の一番上」に貼り付けてください")
+            st.info("右上のコピーボタンを押して、スプレッドシートに貼り付けてください")
             
-            # TSV化（ヘッダー・インデックスあり）
             tsv = df_matrix.to_csv(sep='\t', header=True, index=True)
             st.code(tsv, language="text")
 
@@ -213,9 +247,8 @@ if st.button("🚀 作成開始", type="primary"):
             with col1:
                 st.dataframe(df_stats, use_container_width=True)
             with col2:
-                # コピペ用テキスト
                 tsv_stats = df_stats.to_csv(sep='\t', header=True, index=True)
                 st.code(tsv_stats, language="text")
 
         else:
-            st.error("条件が厳しすぎます")
+            st.error("❌ 条件が厳しすぎます。希望を少し減らしてみてください。")
