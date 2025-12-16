@@ -2,13 +2,12 @@ import streamlit as st
 from ortools.sat.python import cp_model
 import pandas as pd
 
-# --- ページ設定（アイコンとタイトル） ---
+# --- ページ設定 ---
 st.set_page_config(page_title="余市JRシフト", page_icon="🚃", layout="wide")
 
 # ==========================================
 # 🎨 デザイン（CSS）設定エリア
 # ==========================================
-# ここで色や文字の大きさを変えています
 st.markdown("""
     <style>
     /* 全体の背景色を薄い緑に */
@@ -20,11 +19,11 @@ st.markdown("""
         color: #2E7D32;
         font-family: 'Helvetica', sans-serif;
     }
-    /* サイドバーの背景を少し濃く */
+    /* サイドバーの背景 */
     [data-testid="stSidebar"] {
         background-color: #DCEDC8;
     }
-    /* ボタンの色をカスタマイズ */
+    /* ボタンの色 */
     div.stButton > button {
         background-color: #2E7D32;
         color: white;
@@ -34,13 +33,18 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
+# --- ✨ スプレッドシート風の見た目にする関数 ---
+def make_grid(df):
+    return df.style.set_properties(**{
+        'border': '1px solid #c0c0c0',  # 枠線の色（グレー）
+        'text-align': 'center'          # 文字を中央寄せ
+    }).set_table_styles([
+        {'selector': 'th', 'props': [('border', '1px solid #c0c0c0'), ('background-color', '#e8f5e9')]}
+    ])
+
 # タイトル表示
 st.title("🚃 余市JR シフト作成システム")
 st.markdown("**左のメニューで条件を設定し、「作成開始」を押してください**")
-
-# ==========================================
-# 以下、ロジック（中身は同じです）
-# ==========================================
 
 # --- 設定 ---
 num_days = st.sidebar.number_input("📅 作成する日数", 28, 31, 31)
@@ -221,8 +225,12 @@ if st.button("🚀 シフト作成開始"):
             st.markdown("### 📋 シフト表 (コピペ用)")
             st.info("右上のコピーボタンを押して、スプレッドシートに貼り付けてください")
             
+            # コピペ用テキスト
             tsv = df_matrix.to_csv(sep='\t', header=True, index=True)
             st.code(tsv, language="text")
+            
+            # 画面表示用（枠線あり・中央揃え）
+            st.dataframe(make_grid(df_matrix), use_container_width=True)
 
             # --- 2. 集計データ作成 ---
             st.markdown("---")
@@ -245,8 +253,10 @@ if st.button("🚀 シフト作成開始"):
             
             col1, col2 = st.columns([2, 1])
             with col1:
-                st.dataframe(df_stats, use_container_width=True)
+                # 画面表示用（枠線あり・中央揃え）
+                st.dataframe(make_grid(df_stats), use_container_width=True)
             with col2:
+                # コピペ用テキスト
                 tsv_stats = df_stats.to_csv(sep='\t', header=True, index=True)
                 st.code(tsv_stats, language="text")
 
